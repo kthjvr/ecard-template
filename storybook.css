@@ -1,0 +1,653 @@
+/* ===================================
+   1. STORYBOOK CSS
+   =================================== */
+
+.storybook {
+    width: 90vw;
+    max-width: 800px;
+    min-height: 80vh;
+    height: auto;
+    margin-bottom: 60px;
+
+    position: relative;
+    display: none;
+    overflow: hidden;
+
+    background: var(--primary-pink);
+    border-radius: var(--radius-xl);
+    font-family: var(--font-family);
+
+    /* Performance */
+    transform: translateZ(0);
+    will-change: auto;
+}
+
+.storybook.visible {
+    display: block;
+    animation: materialize 0.6s ease-out;
+}
+
+/* Background Effects */
+.storybook::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.storybook::after {
+    display: none;
+}
+
+/* ===================================
+   2. PAGE STRUCTURE
+   =================================== */
+
+.page {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    text-align: center;
+    padding: 40px;
+
+    opacity: 0;
+    transform: translateX(50px) scale(0.98);
+    transition: all 0.5s ease;
+    z-index: 2;
+}
+
+.page.active {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+}
+
+.page.prev {
+    transform: translateX(-30px) scale(0.98);
+}
+
+/* ===================================
+   3. TYPOGRAPHY
+   =================================== */
+
+.storybook h1 {
+    font-size: var(--fs-large);
+    font-family: var(--font-family);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 2px;
+    margin-top: var(--spacing-lg);
+    margin-bottom: var(--spacing-lg);
+
+    background: linear-gradient(135deg, var(--primary-pink), var(--primary-blue));
+    background-clip: text;
+    color: var(--text-white);
+}
+
+.storybook h2 {
+    font-size: var(--fs-large);
+    font-family: var(--font-family);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 1px;
+    margin-top: var(--spacing-lg);
+    margin-bottom: var(--spacing-xxl);
+
+    background: linear-gradient(135deg, var(--primary-pink), var(--primary-blue));
+    background-clip: text;
+    color: var(--text-white);
+}
+
+.storybook p {
+    font-size: 18px;
+    font-family: var(--font-family);
+    font-weight: var(--font-weight-regular);
+    letter-spacing: 0.5px;
+    line-height: 1.6;
+    max-width: 600px;
+    margin: var(--spacing-lg) 0;
+    margin-top: var(--spacing-lg);
+
+    color: var(--text-white);
+}
+
+/* ===================================
+   4. PROGRESS BAR
+   =================================== */
+
+.progress {
+    position: absolute;
+    top: var(--spacing-lg);
+    left: var(--spacing-lg);
+    right: var(--spacing-lg);
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+    z-index: 3;
+}
+
+.progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-pink), var(--primary-blue));
+    border-radius: 2px;
+    transition: width var(--transition-slow);
+}
+
+/* ===================================
+   5. BIRTHDAY SCENE & PHOTO
+   =================================== */
+
+.birthday-scene {
+    width: 295px;
+    height: 320px;
+    margin: var(--spacing-lg) auto;
+    position: relative;
+    animation: demonFloat 4s ease-in-out infinite;
+    margin-bottom: 16px;
+}
+
+.book-photo {
+    border-radius: var(--radius-xxl);
+    width: 295px;
+    height: 420px;
+    object-fit:cover;
+    box-shadow: 0 0 20px rgba(255, 46, 146, 0.4);
+    position: relative;
+}
+
+.book-photo::before {
+    content: '';
+    position: absolute;
+    top: -3px;
+    left: -3px;
+    right: -3px;
+    bottom: -3px;
+    background: var(--primary-gradient);
+    border-radius: var(--radius-xxl);
+    z-index: -1;
+}
+
+/* ===================================
+   6. BALLOONS
+   =================================== */
+
+.balloon {
+    width: 40px;
+    height: 56px;
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    position: absolute;
+    background: var(--primary-gradient);
+    border: 1px solid rgba(255, 46, 146, 0.4);
+    animation: demonSway 6s ease-in-out infinite;
+}
+
+.balloon::after {
+    content: '';
+    width: 1px;
+    height: 60px;
+    background: var(--text-dark);
+    position: absolute;
+    bottom: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+#balloonsContainer {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    z-index: var(--z-background);
+}
+
+/* ===================================
+   7. GIFT BOX
+   =================================== */
+
+.gift-box-container {
+    position: absolute;
+    bottom: var(--spacing-xxl);
+    right: var(--spacing-xxl);
+    width: clamp(70px, 10vw, 100px);
+    height: clamp(90px, 12vw, 120px);
+    z-index: var(--z-modal);
+    pointer-events: auto;
+}
+
+.box {
+    background: transparent;
+    border: 0;
+    margin: 0;
+    padding: 0;
+    position: absolute;
+    left: 10%;
+    bottom: 0;
+    cursor: pointer;
+    outline: none;
+    width: 80%;
+    height: 50%;
+    pointer-events: auto;
+    transition: transform var(--transition-fast);
+}
+
+.box img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.box:hover {
+    transform: scale(1.05);
+}
+
+.jump-character {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    z-index: -1;
+    width: 60%;
+    height: 50%;
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+.jump-character img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.gift-lid {
+    position: absolute;
+    left: 50%;
+    bottom: 42%;
+    width: 90%;
+    height: 25%;
+    transform: translateX(-50%);
+    transform-origin: center bottom;
+    pointer-events: none;
+}
+
+.gift-lid img {
+    width: 100%;
+    height: 100%;
+}
+
+/* ===================================
+   8. CONFETTI EFFECTS
+   =================================== */
+
+.confetti-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: var(--z-loading);
+}
+
+.confetti-piece {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    opacity: 0;
+    background: var(--primary-gradient);
+    border-radius: 2px;
+}
+
+.confetti-active .confetti-piece {
+    animation: demonConfetti 3s ease-out forwards;
+}
+
+.floating-confetti {
+    position: fixed;
+    width: 8px;
+    height: 12px;
+    background: var(--primary-gradient);
+    animation: demonConfettiFall 4s linear forwards;
+    pointer-events: none;
+    border-radius: 1px;
+}
+
+/* ===================================
+   10. AGE-SPECIFIC THEMES
+   =================================== */
+
+.age-1 {
+    background: linear-gradient(135deg, rgba(255, 46, 146, 0.1), rgba(75, 201, 255, 0.1));
+}
+
+.age-2 {
+    background: linear-gradient(135deg, rgba(75, 201, 255, 0.1), rgba(0, 60, 255, 0.1));
+}
+
+.age-3 {
+    background: linear-gradient(135deg, rgba(0, 255, 153, 0.1), rgba(0, 51, 34, 0.1));
+}
+
+.age-4 {
+    background: linear-gradient(135deg, rgba(255, 0, 60, 0.1), rgba(102, 0, 0, 0.1));
+}
+
+.age-5 {
+    background: linear-gradient(135deg, rgba(166, 77, 255, 0.1), rgba(26, 0, 51, 0.1));
+}
+
+.age-6 {
+    background: linear-gradient(135deg, rgba(255, 214, 0, 0.1), rgba(77, 46, 0, 0.1));
+}
+
+/* ===================================
+   11. ANIMATION STATES
+   =================================== */
+
+.jump {
+    animation: demonJump 0.8s ease-out forwards;
+}
+
+.move {
+    animation: demonWiggle 1s infinite linear;
+}
+
+.rotating {
+    animation: demonRotating 0.8s ease-out forwards;
+}
+
+.rotated {
+    transform: translateX(-50%) rotate(145deg);
+}
+
+.rotated-fixed {
+    transform: translateX(-50%) rotate(145deg);
+    transform-origin: center center;
+}
+
+/* ===================================
+   12. KEYFRAME ANIMATIONS
+   =================================== */
+
+@keyframes materialize {
+    0% {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes demonAura {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes demonFloat {
+
+    0%,
+    100% {
+        transform: translateY(0px);
+    }
+
+    50% {
+        transform: translateY(-15px);
+    }
+}
+
+@keyframes hunterFloat {
+
+    0%,
+    100% {
+        transform: translateY(0px) scale(1);
+    }
+
+    50% {
+        transform: translateY(-10px) scale(1.01);
+    }
+}
+
+@keyframes demonSway {
+
+    0%,
+    100% {
+        transform: translateX(0px) rotate(0deg);
+    }
+
+    50% {
+        transform: translateX(10px) rotate(5deg);
+    }
+}
+
+@keyframes demonConfetti {
+    0% {
+        opacity: 1;
+        transform: translateY(-50vh) rotate(0deg) scale(1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: translateY(100vh) rotate(180deg) scale(0);
+    }
+}
+
+@keyframes demonConfettiFall {
+    0% {
+        transform: translateY(-20px) rotate(0deg);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(90vh) rotate(180deg);
+        opacity: 0;
+    }
+}
+
+@keyframes demonSparkle {
+
+    0%,
+    100% {
+        opacity: 0;
+        transform: scale(0);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes demonJump {
+    0% {
+        transform: translateX(-50%) translateY(0);
+    }
+
+    100% {
+        transform: translateX(-50%) translateY(-150%);
+    }
+}
+
+@keyframes demonWiggle {
+
+    0%,
+    100% {
+        transform: translateX(-50%);
+    }
+
+    25% {
+        transform: translateX(-50%) translateX(-2px) rotate(-1deg);
+    }
+
+    75% {
+        transform: translateX(-50%) translateX(2px) rotate(1deg);
+    }
+}
+
+@keyframes demonRotating {
+    0% {
+        transform: translateX(-50%) rotate(0deg);
+    }
+
+    100% {
+        transform: translateX(-50%) rotate(145deg);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ===================================
+   14. TABLET OPTIMIZATIONS (768px)
+   =================================== */
+
+@media screen and (max-width: 768px) {
+    .storybook {
+        width: 95vw;
+        height: 100vh;
+        margin-bottom: var(--spacing-xl);
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+
+    .page {
+        padding: var(--spacing-lg);
+        transform: translateX(30px);
+    }
+
+    .page.active {
+        transform: translateX(0);
+    }
+
+    .page.prev {
+        transform: translateX(-20px);
+    }
+
+    .progress {
+        top: var(--spacing-md);
+        left: var(--spacing-md);
+        right: var(--spacing-md);
+    }
+
+    .book-photo {
+        width: 100%;
+        animation: none;
+    }
+
+    .book-photo::before {
+        animation: none;
+    }
+
+    .gift-box-container {
+        bottom: var(--spacing-xl);
+        right: var(--spacing-xl);
+    }
+
+    h1 {
+        font-size: clamp(1.8rem, 5vw, 2.5rem);
+    }
+
+    .story-text {
+        font-size: var(--fs-regular);
+        padding: 0 var(--spacing-md);
+        background: none;
+        -webkit-background-clip: unset;
+        -webkit-text-fill-color: unset;
+        background-clip: unset;
+        color: var(--text-white);
+        animation: none;
+    }
+
+    .balloon {
+        width: 30px;
+        height: 42px;
+    }
+
+    .balloon::after {
+        height: 40px;
+        bottom: -40px;
+    }
+
+    .sparkle {
+        width: 3px;
+        height: 3px;
+        animation-duration: 3s;
+    }
+}
+
+/* ===================================
+   15. MOBILE OPTIMIZATIONS (480px)
+   =================================== */
+
+@media screen and (max-width: 480px) {
+    .birthday-scene {
+        width: 220px;
+        height: 220px;
+        animation: none;
+    }
+
+    .book-photo {
+        width: 100%;
+        box-shadow: 0 0 10px rgba(255, 46, 146, 0.3);
+    }
+
+    .gift-box-container {
+        width: 60px;
+        height: 80px;
+    }
+}
+
+/* ===================================
+   16. ACCESSIBILITY & PERFORMANCE
+   =================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .storybook::after {
+        display: none !important;
+    }
+}
+
+/* Performance optimizations for mobile devices */
+@media (max-width: 768px) and (max-height: 1024px) {
+
+    .birthday-scene,
+    .book-photo,
+    .balloon,
+    .progress-bar,
+    .sparkle {
+        animation: none !important;
+    }
+
+    .storybook,
+    .book-photo,
+    .balloon {
+        box-shadow: none !important;
+    }
+}
