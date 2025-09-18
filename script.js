@@ -1,824 +1,897 @@
-class BirthdayInvitationController {
-    constructor() {
-        this.isEnvelopeOpened = false;
-        this.isMusicPlaying = false;
-        this.countdownInterval = null;
-        this.giftBoxState = null;
-        this.currentPage = 0;
-        this.floatingConfettiInterval = null;
-        this.currentConfettiCount = 0;
+// =============================================================================
+// LOADING SCREEN MODULE
+// =============================================================================
 
-        this.rafId = null;
-        this.isAnimating = false;
-        this.throttledResize = this.throttle(this.handleResize.bind(this), 250);
-        this.elements = {};
+class LoadingScreen {
+  constructor() {
+    this.loadingScreen = document.getElementById("loadingScreen");
+    this.spinner = this.loadingScreen?.querySelector(".spinner");
+    this.loadingText = this.loadingScreen?.querySelector("p");
 
-        this.init();
+    this.isLoaded = false;
+    this.minimumLoadTime = 2000;
+    this.loadStartTime = Date.now();
+    this.currentMessageIndex = 0;
+
+    this.messages = [
+      "Preparing a surprise...",
+      "Setting up the party...",
+      "Adding magical touches...",
+      "Almost ready!",
+    ];
+
+    this.init();
+  }
+
+  init() {
+    this.preloadResources();
+    this.startMessageCycle();
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", () => this.onDOMReady());
+      window.addEventListener("load", () => this.onWindowLoad());
+    } else {
+      this.onDOMReady();
+      if (document.readyState === "complete") {
+        this.onWindowLoad();
+      } else {
+        window.addEventListener("load", () => this.onWindowLoad());
+      }
+    }
+  }
+
+  preloadResources() {
+    const imagesToPreload = [
+      "https://ik.imagekit.io/e3wiv79bq/huntrix-cake.png",
+      "https://ik.imagekit.io/e3wiv79bq/invitation-preview.png",
+    ];
+
+    const promises = imagesToPreload.map((src) => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = resolve;
+        img.onerror = resolve;
+        img.src = src;
+      });
+    });
+
+    Promise.all(promises).then(() => console.log("Images preloaded"));
+  }
+
+  startMessageCycle() {
+    if (!this.loadingText) return;
+
+    this.messageInterval = setInterval(() => {
+      if (this.isLoaded) return;
+      this.currentMessageIndex =
+        (this.currentMessageIndex + 1) % this.messages.length;
+      this.updateLoadingMessage(this.messages[this.currentMessageIndex]);
+    }, 1500);
+  }
+
+  updateLoadingMessage(message) {
+    if (!this.loadingText) return;
+
+    this.loadingText.style.opacity = "0";
+    this.loadingText.style.transform = "translateY(-10px)";
+
+    setTimeout(() => {
+      this.loadingText.textContent = message;
+      this.loadingText.style.opacity = "1";
+      this.loadingText.style.transform = "translateY(0)";
+    }, 300);
+  }
+
+  onDOMReady() {
+    console.log("DOM ready");
+  }
+
+  onWindowLoad() {
+    console.log("Window loaded");
+    const loadTime = Date.now() - this.loadStartTime;
+    const remainingTime = Math.max(0, this.minimumLoadTime - loadTime);
+
+    setTimeout(() => this.hideLoadingScreen(), remainingTime);
+  }
+
+  hideLoadingScreen() {
+    if (!this.loadingScreen || this.isLoaded) return;
+
+    this.isLoaded = true;
+
+    if (this.messageInterval) {
+      clearInterval(this.messageInterval);
     }
 
-    init() {
-        this.cacheElements();
-        this.setupLoadingScreen();
-        this.setupEventListeners();
-        this.setupCountdown();
-        this.setupTouchSupport();
+    this.loadingScreen.classList.add("loading-complete");
+
+    if (this.loadingText) {
+      this.updateLoadingMessage("Welcome to the party! 🎉");
     }
 
-    // Cache frequently used DOM elements
-    cacheElements() {
-        const elementIds = [
-            'loadingScreen', 'mainContent', 'envelope', 'lid', 'letter',
-            'lid1', 'storybook', 'inviteDetails', 'musicBtn', 'rsvpBtn',
-            'shareBtn', 'openSound', 'bgMusic', 'rsvpModal', 'shareModal',
-            'closeModal', 'closeShareModal', 'progressBar', 'giftBoxBtn',
-            'giftBoxLid', 'jumpCharacter', 'days', 'hours', 'balloonsContainer',
-            'invitationList'
-        ];
+    setTimeout(() => {
+      this.loadingScreen.classList.add("fade-out");
+      setTimeout(() => {
+        if (this.loadingScreen.parentNode) {
+          this.loadingScreen.style.display = "none";
+        }
+        this.onLoadingComplete();
+      }, 800);
+    }, 1000);
+  }
 
-        elementIds.forEach(id => {
-            this.elements[id] = document.getElementById(id);
+  onLoadingComplete() {
+    console.log("Loading complete - initializing app");
+
+    if (typeof confetti !== "undefined") {
+      setTimeout(() => {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ["#9B4DFF", "#FF2D95", "#4BC9FF", "#FFD700"],
         });
+      }, 500);
     }
 
-    // Loading Screen
-    setupLoadingScreen() {
-        const { loadingScreen, mainContent } = this.elements;
+    this.initializeApp();
+  }
 
-        const showMainContent = () => {
-            loadingScreen.classList.add('hidden');
-            mainContent.classList.add('visible');
-
-            setTimeout(() => {
-                loadingScreen.remove();
-            }, 700);
-        };
-
-        // Hide loader as soon as everything is ready
-        window.addEventListener('load', showMainContent);
+  initializeApp() {
+    if (typeof tsParticles !== "undefined") {
+      this.initParticles();
     }
 
-
-    //  Event Listeners Setup
-    setupEventListeners() {
-        const { envelope, musicBtn, rsvpBtn, shareBtn } = this.elements;
-
-        // Use passive listeners where possible
-        envelope.addEventListener('click', this.openEnvelope.bind(this), { passive: true });
-        envelope.addEventListener('keydown', this.handleEnvelopeKeydown.bind(this));
-
-        musicBtn.addEventListener('click', this.toggleMusic.bind(this), { passive: true });
-        // rsvpBtn.addEventListener('click', this.openRSVPModal.bind(this), { passive: true });
-        // shareBtn.addEventListener('click', this.openShareModal.bind(this), { passive: true });
-
-        this.setupModals();
-        this.setupShareHandlers();
-
-        // Use throttled resize handler
-        window.addEventListener('resize', this.throttledResize, { passive: true });
-        window.addEventListener('beforeunload', this.cleanup.bind(this));
-    }
-
-    handleEnvelopeKeydown(e) {
-        if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            this.openEnvelope();
-        }
-    }
-
-    // Envelope Opening
-    openEnvelope() {
-        if (this.isEnvelopeOpened || this.isAnimating) return;
-
-        this.isAnimating = true;
-        this.isEnvelopeOpened = true;
-
-        const { envelope, lid, letter, openSound, lid1, storybook } = this.elements;
-        if (lid1) lid1.style.display = 'none';
-
-        // Disable envelope interaction
-        envelope.style.pointerEvents = 'none';
-        this.playSound(openSound);
-        this.animateEnvelopeOpening(lid, letter, storybook);
-    }
-
-    animateEnvelopeOpening(lid, letter, storybook) {
-        // Animate flap opening
-        lid.classList.add('open');
-        setTimeout(() => {
-            letter.classList.add('visible');
-        }, 500);
-
-        setTimeout(() => {
-            storybook.classList.add('visible');
-            this.showStoryBook();
-            this.startMusic();
-            this.smoothScrollToStorybook(storybook);
-            this.triggerBirthdayConfetti();
-            this.isAnimating = false;
-        }, 1200);
-    }
-
-    smoothScrollToStorybook(storybook) {
-        this.rafId = requestAnimationFrame(() => {
-            storybook.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        });
-    }
-
-    playSound(audioElement) {
-        if (audioElement) {
-            audioElement.play().catch(() => {
-                console.log('Audio play failed - user interaction required');
-            });
-        }
-    }
-
-    showInvitationAfterStory() {
-        const { inviteDetails, invitationList } = this.elements;
-
-        setTimeout(() => {
-            inviteDetails.classList.add('visible');
-            invitationList.classList.add('visible');
-            setTimeout(() => {
-                window.scrollBy({ top: 800, behavior: 'smooth' });
-            }, 100);
-        }, 1000);
-    }
-
-    smoothScrollToElement(element, offset = 0) {
-        this.rafId = requestAnimationFrame(() => {
-            const elementTop = element.getBoundingClientRect().top + window.scrollY;
-            window.scrollTo({
-                top: elementTop - offset,
-                behavior: 'smooth'
-            });
-        });
-    }
-
-    //  Story Book
-    showStoryBook() {
-        const initState = {
-            move: "move",
-            jump: "",
-            rotated: "",
-            rotating: ""
-        };
-
-        if (!this.giftBoxState) {
-            this.giftBoxState = { ...initState };
-        }
-        if (!this.currentPage) {
-            this.currentPage = 0;
-        }
-
-        // cache DOM queries
-        const pages = document.querySelectorAll('.page');
-        const totalPages = pages.length;
-        const { progressBar, giftBoxBtn, giftBoxLid, jumpCharacter } = this.elements;
-
-        // gift box functions
-        const updateGiftBoxState = (newState) => {
-            this.giftBoxState = { ...this.giftBoxState, ...newState };
-            this.applyGiftBoxClasses(giftBoxLid, jumpCharacter);
-        };
-
-        const animateGiftBox = () => {
-            const isDone = this.giftBoxState.rotated === "rotated";
-
-            if (!isDone) {
-                updateGiftBoxState({ rotating: "rotating" });
-
-                setTimeout(() => {
-                    updateGiftBoxState({ jump: "jump" });
-                    // this.triggerBirthdayConfetti();
-                }, 300);
-
-                setTimeout(() => {
-                    updateGiftBoxState({ rotated: "rotated" });
-                    nextPage();
-                    setTimeout(closeGiftBox, 700);
-                }, 700);
-            } else {
-                updateGiftBoxState(initState);
-                nextPage();
-            }
-
-            const moving = this.giftBoxState.move === "move" ? "" : "move";
-            updateGiftBoxState({ move: moving });
-        };
-
-        const closeGiftBox = () => {
-            if (this.giftBoxState.rotated === "rotated") {
-                updateGiftBoxState({ jump: "" });
-
-                if (giftBoxLid) {
-                    giftBoxLid.style.animation = "rotating-back 0.7s ease-out forwards";
-                    setTimeout(() => {
-                        updateGiftBoxState(initState);
-                        giftBoxLid.style.animation = "";
-                    }, 700);
-                }
-            }
-        };
-
-        const updateProgress = () => {
-            if (progressBar) {
-                const progress = (this.currentPage / (totalPages - 1)) * 100;
-                progressBar.style.width = progress + '%';
-            }
-        };
-
-        const showPage = (pageIndex) => {
-            pages.forEach((page, index) => {
-                page.classList.remove('active', 'prev');
-                if (index === pageIndex) {
-                    page.classList.add('active');
-                } else if (index < pageIndex) {
-                    page.classList.add('prev');
-                }
-            });
-            updateProgress();
-        };
-
-        const nextPage = () => {
-            this.currentPage = (this.currentPage + 1) % totalPages;
-            showPage(this.currentPage);
-
-            if (this.currentPage === totalPages - 1) {
-                setTimeout(() => {
-                    this.showInvitationAfterStory();
-                }, 1000);
-            }
-        };
-
-        // event listener setup
-        if (giftBoxBtn && !giftBoxBtn.hasAttribute('data-listener-added')) {
-            giftBoxBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                animateGiftBox();
-            }, { passive: true });
-            giftBoxBtn.setAttribute('data-listener-added', 'true');
-        }
-
-        // Initialize display
-        if (totalPages > 0) {
-            showPage(0);
-            updateProgress();
-            this.applyGiftBoxClasses(giftBoxLid, jumpCharacter);
-        }
-    }
-
-    // gift box class application
-    applyGiftBoxClasses(giftBoxLid, jumpCharacter) {
-        const { move, jump, rotated, rotating } = this.giftBoxState;
-
-        if (giftBoxLid) {
-            giftBoxLid.className = `gift-lid ${move} ${rotating} ${rotated}`.trim();
-        }
-
-        if (jumpCharacter) {
-            jumpCharacter.className = `jump-character ${jump}`.trim();
-        }
-    }
-
-    // Birthday Confetti
-    triggerBirthdayConfetti() {
-        if (!window.confetti) return;
-
-        const duration = 500;
-        const animationEnd = Date.now() + duration;
-        const colors = ['#ff6b35', '#ffd23f', '#4ecdc4', '#45b7d1', '#fd79a8', '#6c5ce7'];
-
-        const confettiInterval = setInterval(() => {
-            const timeLeft = animationEnd - Date.now();
-
-            if (timeLeft <= 0) {
-                clearInterval(confettiInterval);
-                return;
-            }
-
-            const particleCount = Math.floor(30 * (timeLeft / duration));
-            this.createConfettiBurst(particleCount, colors, 0.1, 0.3);
-            this.createConfettiBurst(particleCount, colors, 0.7, 0.9);
-        }, 1250);
-
-        // Delayed special effects
-        setTimeout(() => this.createSpecialConfetti(colors), 1000);
-        setTimeout(() => this.createBalloonBurst(colors), 2000);
-    }
-
-    createConfettiBurst(particleCount, colors, minX, maxX) {
-        if (window.confetti) {
-            confetti({
-                particleCount,
-                startVelocity: 35,
-                spread: 70,
-                origin: { x: this.randomInRange(minX, maxX), y: Math.random() - 0.2 },
-                colors: colors,
-                shapes: ['circle', 'square'],
-                ticks: 80
-            });
-        }
-    }
-
-    createSpecialConfetti(colors) {
-        if (window.confetti) {
-            confetti({
-                particleCount: 50,
-                spread: 100,
-                origin: { y: 0.6 },
-                shapes: ['circle'],
-                colors: ['#ff6b35', '#ffd23f', '#fd79a8'],
-                startVelocity: 45,
-                gravity: 0.8
-            });
-        }
-    }
-
-    createBalloonBurst(colors) {
-        if (window.confetti) {
-            confetti({
-                particleCount: 50,
-                spread: 60,
-                origin: { y: 0.4 },
-                shapes: ['circle'],
-                colors: ['#4ecdc4', '#45b7d1', '#6c5ce7'],
-                startVelocity: 25
-            });
-        }
-    }
-
-    // Floating Confetti with performance limits
-    startFloatingBalloons() {
-        const MAX_CONFETTI = 15;
-        const { balloonsContainer } = this.elements;
-
-        if (!balloonsContainer) return;
-
-        const createConfetti = () => {
-            if (this.currentConfettiCount >= MAX_CONFETTI) return;
-
-            this.currentConfettiCount++;
-            const piece = document.createElement('div');
-            piece.className = 'floating-confetti';
-            piece.style.left = Math.random() * 100 + '%';
-            piece.style.setProperty('--hue', Math.floor(Math.random() * 360));
-
-            balloonsContainer.appendChild(piece);
-
-            setTimeout(() => {
-                if (piece.parentNode) {
-                    piece.remove();
-                    this.currentConfettiCount--;
-                }
-            }, 6000);
-        };
-
-        this.floatingConfettiInterval = setInterval(createConfetti, 500);
-        for (let i = 0; i < 2; i++) {
-            setTimeout(createConfetti, i * 800);
-        }
-    }
-
-    // Countdown
-    setupCountdown() {
-        const eventDate = new Date("Nov 02, 2025 18:00:00").getTime();
-        const { days: daysEl, hours: hoursEl } = this.elements;
-
-        if (!daysEl || !hoursEl) return;
-
-        const updateCountdown = () => {
-            const now = Date.now();
-            const distance = eventDate - now;
-
-            if (distance < 0) {
-                this.handlePartyStarted();
-                return;
-            }
-
-            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-
-            // Only update if values changed
-            this.updateCountdownElement(daysEl, days.toString().padStart(2, '0'));
-            this.updateCountdownElement(hoursEl, hours.toString().padStart(2, '0'));
-        };
-
-        this.countdownInterval = setInterval(updateCountdown, 1000);
-        updateCountdown();
-    }
-
-    updateCountdownElement(element, newValue) {
-        if (element.textContent !== newValue) {
-            this.animateNumberChange(element, newValue);
-        }
-    }
-
-    animateNumberChange(element, newValue) {
-        element.style.transform = 'scale(1.3)';
-        element.style.textShadow = '0 0 10px rgba(255, 107, 53, 0.8)';
-
-        setTimeout(() => {
-            element.textContent = newValue;
-            element.style.transform = 'scale(1)';
-            element.style.textShadow = '';
-        }, 200);
-    }
-
-    handlePartyStarted() {
-        const countdownSection = document.querySelector('.countdown-section');
-        if (countdownSection) {
-            countdownSection.innerHTML = `
-              <h3>🎊 The Party Has Begun! 🎊</h3>
-              <div class="event-started">
-                <p style="font-size: 1.2rem; color: #ff6b35; margin: 15px 0;">Hope you're having a blast!</p>
-                <div style="font-size: 2rem; animation: partyTime 1s ease-in-out infinite;">🎉 🎂 🎈 🍰 🎁</div>
-              </div>
-            `;
-        }
-
-        clearInterval(this.countdownInterval);
-        this.triggerBirthdayConfetti();
-    }
-
-    // Music Controls
-    toggleMusic() {
-        const { musicBtn, bgMusic } = this.elements;
-
-        if (this.isMusicPlaying) {
-            bgMusic.pause();
-            musicBtn.classList.remove('playing');
-            this.isMusicPlaying = false;
-        } else {
-            this.startMusic();
-        }
-    }
-
-    startMusic() {
-        const { musicBtn, bgMusic } = this.elements;
-
-        bgMusic.play()
-            .then(() => {
-                musicBtn.classList.add('playing');
-                this.isMusicPlaying = true;
-            })
-            .catch(() => {
-                console.log('Auto-play prevented. User interaction required.');
-            });
-    }
-
-    // Modal Management
-    setupModals() {
-        const { rsvpModal, closeModal, shareModal, closeShareModal } = this.elements;
-
-        // RSVP modal close
-        if (closeModal) {
-            closeModal.addEventListener('click', () => this.closeModal(rsvpModal), { passive: true });
-        }
-        if (rsvpModal) {
-            rsvpModal.addEventListener('click', (e) => {
-                if (e.target === rsvpModal) {
-                    this.closeModal(rsvpModal);
-                }
-            }, { passive: true });
-        }
-
-        // Share modal close
-        if (closeShareModal) {
-            closeShareModal.addEventListener('click', () => this.closeModal(shareModal), { passive: true });
-        }
-        if (shareModal) {
-            shareModal.addEventListener('click', (e) => {
-                if (e.target === shareModal) {
-                    this.closeModal(shareModal);
-                }
-            }, { passive: true });
-        }
-
-        // Escape key closes whichever is open
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                [rsvpModal, shareModal].forEach(m => this.closeModal(m));
-            }
-        });
-    }
-
-
-    openRSVPModal() {
-        const modal = this.elements.rsvpModal;
-        modal.classList.add('show');
-        document.body.style.overflow = 'hidden';
-
-        // Use requestAnimationFrame for focus
-        this.rafId = requestAnimationFrame(() => {
-            const firstInput = modal.querySelector('input');
-            if (firstInput) {
-                setTimeout(() => firstInput.focus(), 300);
-            }
-        });
-    }
-
-    openShareModal() {
-        const modal = this.elements.shareModal;
-        modal.classList.add('show');
-        document.body.style.overflow = 'hidden';
-    }
-
-    closeModal(modal) {
-        modal.classList.remove('show');
-        document.body.style.overflow = '';
-    }
-
-    // Share Handlers
-    setupShareHandlers() {
-        const shareOptions = document.querySelectorAll('.share-option');
-        shareOptions.forEach(option => {
-            option.addEventListener('click', () => {
-                const platform = option.dataset.platform;
-                this.handleShare(platform);
-            }, { passive: true });
-        });
-    }
-
-    handleShare(platform) {
-        const shareText = "💌 Hey! I've got a surprise invitation for you. Open the link 🎉";
-        const shareUrl = window.location.href;
-
-        switch (platform) {
-            case 'facebook':
-                window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`);
-                break;
-            case 'copy':
-                const fullText = `${shareText}\n${shareUrl}`;
-                this.copyToClipboard(fullText);
-                break;
-        }
-
-        this.closeModal(this.elements.shareModal);
-    }
-
-    // clipboard function
-    async copyToClipboard(text) {
-        try {
-            await navigator.clipboard.writeText(text);
-            this.showNotification('Link copied to clipboard! 📋', 'success');
-        } catch (err) {
-            this.fallbackCopyTextToClipboard(text);
-        }
-    }
-
-    fallbackCopyTextToClipboard(text) {
-        const textArea = document.createElement('textarea');
-        textArea.value = text;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        textArea.style.top = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-
-        try {
-            document.execCommand('copy');
-            this.showNotification('Link copied to clipboard! 📋', 'success');
-        } catch (err) {
-            this.showNotification('Failed to copy link', 'error');
-        }
-
-        document.body.removeChild(textArea);
-    }
-
-    // Touch Support
-    setupTouchSupport() {
-        const interactiveElements = document.querySelectorAll('.envelope, button, .share-option');
-
-        interactiveElements.forEach(element => {
-            element.addEventListener('touchstart', () => {
-                element.style.transform = (element.style.transform || '') + ' scale(0.95)';
-            }, { passive: true });
-
-            element.addEventListener('touchend', () => {
-                setTimeout(() => {
-                    element.style.transform = element.style.transform.replace(' scale(0.95)', '');
-                }, 100);
-            }, { passive: true });
-        });
-    }
-
-    // Throttle utility for performance
-    throttle(func, limit) {
-        let inThrottle;
-        return function () {
-            const args = arguments;
-            const context = this;
-            if (!inThrottle) {
-                func.apply(context, args);
-                inThrottle = true;
-                setTimeout(() => inThrottle = false, limit);
-            }
-        };
-    }
-
-    // Responsive Handling
-    handleResize() {
-        const countdown = document.querySelector('.countdown');
-        if (countdown) {
-            if (window.innerWidth < 350) {
-                countdown.style.gridTemplateColumns = 'repeat(2, 1fr)';
-            } else {
-                countdown.style.gridTemplateColumns = 'repeat(4, 1fr)';
-            }
-        }
-    }
-
-    // Notification System
-    showNotification(message, type = 'info') {
-        const existingNotifications = document.querySelectorAll('.notification');
-        if (existingNotifications.length >= 3) {
-            existingNotifications[0].remove();
-        }
-
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.innerHTML = `<div class="notification-content">${message}</div>`;
-
-        const bgColor = type === 'success' ?
-            'linear-gradient(135deg, #4CAF50, #45a049)' :
-            'linear-gradient(135deg, #ff6b35, #ff8566)';
-
-        notification.style.cssText = `
-          position: fixed;
-          top: 20px;
-          right: 20px;
-          background: ${bgColor};
-          color: white;
-          padding: 15px 20px;
-          border-radius: 15px;
-          z-index: 1001;
-          box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-          animation: slideInRight 0.3s ease, slideOutRight 0.3s ease 2.7s;
-          max-width: 300px;
-          font-family: inherit;
-          font-weight: 500;
-          will-change: transform;
-        `;
-
-        document.body.appendChild(notification);
-
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.remove();
-            }
-        }, 3000);
-    }
-
-    // Utility Functions
-    randomInRange(min, max) {
-        return Math.random() * (max - min) + min;
-    }
-
-    cleanup() {
-        // Clear all intervals
-        if (this.countdownInterval) {
-            clearInterval(this.countdownInterval);
-        }
-        if (this.floatingConfettiInterval) {
-            clearInterval(this.floatingConfettiInterval);
-        }
-
-        // Cancel animation frames
-        if (this.rafId) {
-            cancelAnimationFrame(this.rafId);
-        }
-
-        // Stop music
-        const { bgMusic } = this.elements;
-        if (bgMusic && !bgMusic.paused) {
-            bgMusic.pause();
-        }
-
-        // Remove event listeners
-        window.removeEventListener('resize', this.throttledResize);
-    }
+    document.body.classList.add("loaded");
+    window.dispatchEvent(new CustomEvent("loadingComplete"));
+  }
+
+  initParticles() {
+    tsParticles.load("tsparticles", {
+      fpsLimit: 30,
+      particles: {
+        color: { value: "#FF8FA3" },
+        move: {
+          enable: true,
+          speed: 0.5,
+          direction: "none",
+          random: true,
+          straight: false,
+          outModes: { default: "out" },
+        },
+        number: { value: 100 },
+        opacity: {
+          value: { min: 0.1, max: 1 },
+          animation: { enable: true, speed: 1, minimumValue: 0.1 },
+        },
+        shape: { type: "circle" },
+        size: { value: { min: 0.5, max: 2 } },
+      },
+    });
+  }
+
+  forceHide() {
+    this.hideLoadingScreen();
+  }
 }
 
-// initialization
-document.addEventListener('DOMContentLoaded', () => {
-    const controller = new BirthdayInvitationController();
+// =============================================================================
+// GUEST LIST MODULE
+// =============================================================================
 
-    // storybook completion handler
-    const storybookContainer = document.querySelector('.storybook-container');
-    if (storybookContainer) {
-        storybookContainer.addEventListener('storyComplete', () => {
-            controller.showInvitationAfterStory();
-        }, { once: true });
+class GuestListManager {
+  constructor() {
+    this.checkGuestBtn = document.getElementById("checkGuestBtn");
+    this.guestListContent = document.getElementById("guestListContent");
+    this.guestCards = document.querySelectorAll(".guest-card");
+    this.thankYouMessage = document.getElementById("thankYouMessage");
+
+    // Debug logging
+    // console.log('=== ELEMENT SELECTION DEBUG ===');
+    // console.log('Check button found:', !!this.checkGuestBtn);
+    // console.log('Content found:', !!this.guestListContent);
+    // console.log('Cards found:', this.guestCards.length);
+    // console.log('Thank you message found:', !!this.thankYouMessage);
+
+    if (!this.checkGuestBtn || !this.guestListContent) {
+      console.error("Critical elements not found!");
+      return;
     }
 
-    const galleryContainer = document.querySelector('.dress-code-gallery');
-    const lightbox = document.getElementById('lightbox');
-    const lightboxImg = document.getElementById('lightbox-img');
-    const closeBtn = document.querySelector('.lightbox .close');
+    this.init();
+  }
 
-    if (galleryContainer && lightbox) {
-        galleryContainer.addEventListener('click', (e) => {
-            if (e.target.tagName === 'IMG') {
-                lightbox.style.display = 'flex';
-                lightboxImg.src = e.target.src;
-                lightboxImg.alt = e.target.alt;
-            }
-        }, { passive: true });
+  init() {
+    this.setupMobileToggle();
+    this.setupIntersectionObserver();
+    this.setupResizeHandler();
+  }
 
-        closeBtn.addEventListener('click', () => {
-            lightbox.style.display = 'none';
-        }, { passive: true });
+  setupMobileToggle() {
+    if (!this.checkGuestBtn || !this.guestListContent) return;
 
-        lightbox.addEventListener('click', (e) => {
-            if (e.target === lightbox) {
-                lightbox.style.display = 'none';
-            }
-        }, { passive: true });
-    }
+    this.checkGuestBtn.addEventListener("click", () => {
+      this.guestListContent.classList.toggle("show");
 
-    // google calendar
-    const calendarBtn = document.getElementById('calendarBtn');
-    calendarBtn.addEventListener('click', () => {
-        const title = encodeURIComponent("[Child Name]'s 7th Birthday Celebration");
-        const details = encodeURIComponent("Come celebrate with us! 🎉");
-        const location = encodeURIComponent("Location Philippines");
+      if (this.guestListContent.classList.contains("show")) {
+        this.showGuestList();
+      } else {
+        this.hideGuestList();
+      }
+    });
+  }
 
-        // Event start and end in format: YYYYMMDDTHHMMSSZ
-        const startDate = "20250102T020000Z";
-        const endDate = "20250102T060000Z";
+  showGuestList() {
+    console.log("=== SHOW GUEST LIST DEBUG ===");
+    console.log("Button element:", this.checkGuestBtn);
+    console.log("Content element:", this.guestListContent);
+    console.log("Button current HTML:", this.checkGuestBtn.innerHTML);
+    console.log("Content current classes:", this.guestListContent.className);
+    console.log(
+      "Content current display:",
+      getComputedStyle(this.guestListContent).display
+    );
 
-        const googleCalendarUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startDate}/${endDate}&details=${details}&location=${location}&sf=true&output=xml`;
+    // Update button text
+    this.checkGuestBtn.innerHTML = `
+            Hide Guest List
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+                <path d="m18 15-6-6-6 6"/>
+            </svg>
+        `;
 
-        window.open(googleCalendarUrl, "_blank");
+    // console.log('Button HTML after update:', this.checkGuestBtn.innerHTML);
+
+    // Force display change
+    this.guestListContent.style.display = "block";
+    console.log(
+      "Content display after force:",
+      getComputedStyle(this.guestListContent).display
+    );
+
+    setTimeout(() => {
+      this.guestListContent.classList.add("visible");
+      console.log(
+        "Added visible class. Classes now:",
+        this.guestListContent.className
+      );
+      this.animateCards();
+      this.scrollToContent();
+    }, 100);
+  }
+
+  hideGuestList() {
+    this.checkGuestBtn.innerHTML = `
+            Check Guest List
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+                <path d="m9 18 6-6-6-6"/>
+            </svg>
+        `;
+
+    this.guestListContent.classList.remove("visible");
+    this.guestCards.forEach((card) => card.classList.remove("visible"));
+    this.thankYouMessage.classList.remove("visible");
+  }
+
+  animateCards() {
+    this.guestCards.forEach((card, index) => {
+      setTimeout(() => card.classList.add("visible"), index * 150);
     });
 
-    var calendarEl = document.getElementById('calendar-js');
-    var calendar = new FullCalendar.Calendar(calendarEl, {
-      initialView: 'dayGridMonth',
-      initialDate: '2025-01-02',
-      headerToolbar: {
-        left: 'title',
-        center: '',
-        right: ''
-      },
-      showNonCurrentDates: true,
-      fixedWeekCount: true,
-      dayHeaderFormat: { weekday: 'narrow' },
-      selectable: false,
-      height: 'auto',
-      contentHeight: 300,
-      expandRows: true,
-      aspectRatio: 1.35,
-      validRange: {
-        start: '2025-01-01',
-        end: '2025-01-31'
-      },
+    setTimeout(() => {
+      this.thankYouMessage.classList.add("visible");
+    }, this.guestCards.length * 150 + 200);
+  }
 
+  scrollToContent() {
+    setTimeout(() => {
+      this.guestListContent.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 300);
+  }
+
+  setupIntersectionObserver() {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const header = document.getElementById("guestListHeader");
+            if (header) header.classList.add("visible");
+
+            if (window.innerWidth > 768) {
+              setTimeout(() => {
+                this.guestListContent.classList.add("visible");
+                this.animateCards();
+              }, 300);
+            }
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    const guestListSection = document.getElementById("guest-list-section");
+    if (guestListSection) observer.observe(guestListSection);
+  }
+
+  setupResizeHandler() {
+    window.addEventListener("resize", () => {
+      if (window.innerWidth > 768) {
+        // Desktop: Always show content if visible class is present
+        this.guestListContent.style.display = "block";
+        if (this.guestListContent.classList.contains("visible")) {
+          this.guestCards.forEach((card) => card.classList.add("visible"));
+          this.thankYouMessage.classList.add("visible");
+        }
+      } else {
+        // Mobile: Only hide if not manually shown by button
+        if (!this.guestListContent.classList.contains("show")) {
+          this.guestListContent.style.display = "none";
+          this.guestListContent.classList.remove("visible");
+          this.guestCards.forEach((card) => card.classList.remove("visible"));
+          this.thankYouMessage.classList.remove("visible");
+        }
+      }
+    });
+  }
+}
+
+// =============================================================================
+// STORY BOOK MODULE
+// =============================================================================
+
+class StoryBook {
+  constructor() {
+    this.stories = [
+      {
+        title: "My Birthday Adventure",
+        image:
+          "https://ik.imagekit.io/e3wiv79bq/cover.png",
+        text: "Come along on a magical journey of my life and see what you might have missed from my birthdays!",
+      },
+      {
+        title: "My First Birthday! 🎂",
+        image: "https://placehold.co/600x400",
+        text: "One year old and ready to explore!",
+      },
+      {
+        title: "Two Years of Wonder! 🎈🎈",
+        image: "https://placehold.co/600x400",
+        text: "Two candles dancing in the breeze! I'm getting bigger and learning so many new things every day.",
+      },
+      {
+        title: "Three and Free! 🌟🌟🌟",
+        image: "https://placehold.co/600x400",
+        text: "Three years of adventures! I can run, jump, and play.",
+      },
+      {
+        title: "Fantastic Four! 🚀🚀🚀🚀",
+        image: "https://placehold.co/600x400",
+        text: "Four candles glowing bright!",
+      },
+      {
+        title: "High Five for Five! 🖐️",
+        image: "https://placehold.co/600x400",
+        text: "Five years of growing and learning! I'm getting ready for big adventures and maybe even school soon!",
+      },
+      {
+        title: "Super Six! 🦋🦋🦋🦋🦋🦋",
+        image: "https://placehold.co/600x400",
+        text: "Six wonderful years of birthdays!",
+      },
+      {
+        title: "Time to Celebrate! 🎉✨",
+        image:
+          "https://ik.imagekit.io/e3wiv79bq/final-cover.png",
+        text: "Get your party hats on, grab the confetti, and let's make this next birthday the happiest one yet! 🥳",
+      },
+    ];
+
+    this.currentStory = 0;
+    this.init();
+  }
+
+  init() {
+    this.initializeIndicators();
+    this.setupNextButton();
+    this.setupIntersectionObserver();
+  }
+
+  initializeIndicators() {
+    const indicator = document.getElementById("storyIndicator");
+    if (!indicator) return;
+
+    indicator.innerHTML = "";
+    this.stories.forEach((_, index) => {
+      const dot = document.createElement("div");
+      dot.className = "story-dot";
+      if (index === 0) dot.classList.add("active");
+      indicator.appendChild(dot);
+    });
+  }
+
+  setupNextButton() {
+    const nextButton = document.getElementById("nextButton");
+    if (!nextButton) return;
+
+    nextButton.addEventListener("click", () => {
+      if (this.currentStory < this.stories.length - 1) {
+        this.currentStory++;
+        this.updateStory();
+      } else {
+        console.log("Moving to next section...");
+      }
+    });
+  }
+
+  updateStory() {
+    const elements = {
+      storyCard: document.getElementById("storyCard"),
+      storyTitle: document.getElementById("storyTitle"),
+      storyImage: document.getElementById("storyImage"),
+      storyText: document.getElementById("storyText"),
+      nextButton: document.getElementById("nextButton"),
+    };
+
+    if (!elements.storyCard) return;
+
+    elements.storyCard.classList.add("turning");
+
+    setTimeout(() => {
+      const story = this.stories[this.currentStory];
+
+      elements.storyTitle.textContent = story.title;
+      elements.storyImage.src = story.image;
+      elements.storyImage.alt = `Story illustration ${this.currentStory + 1}`;
+      elements.storyText.textContent = story.text;
+
+      this.updateIndicators();
+      this.updateNextButton(elements.nextButton);
+
+      elements.storyCard.classList.remove("turning");
+    }, 300);
+  }
+
+  updateIndicators() {
+    const dots = document.querySelectorAll(".story-dot");
+    dots.forEach((dot, index) => {
+      dot.classList.toggle("active", index === this.currentStory);
+    });
+  }
+
+  updateNextButton(button) {
+    const isLastStory = this.currentStory === this.stories.length - 1;
+    button.innerHTML = isLastStory
+      ? `Continue to Party! <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>`
+      : `Next <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>`;
+
+    if (isLastStory) {
+      const eventSection = document.getElementById("event-details");
+      eventSection.classList.add("visible");
+      eventSection.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      const dressSection = document.getElementById("dress-code");
+      dressSection.classList.add("visible");
+
+      const rsvpSection = document.getElementById("rsvp-section");
+      rsvpSection.classList.add("visible");
+
+      const guestSection = document.getElementById("guest-list-section");
+      guestSection.classList.add("visible");
+
+      const footerSection = document.getElementById("footer-section");
+      footerSection.classList.add("visible");
+    }
+  }
+
+  setupIntersectionObserver() {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.querySelector(".story-card")?.classList.add("visible");
+        }
+      });
+    });
+
+    const storySection = document.getElementById("story-section");
+    if (storySection) observer.observe(storySection);
+  }
+}
+
+// =============================================================================
+// EVENT DETAILS MODULE
+// =============================================================================
+
+class EventDetailsManager {
+  constructor() {
+    this.eventDetails = {
+      title: "Damaris Alexa's 7th Birthday Party",
+      start: "2025-11-02T10:00:00",
+      end: "2025-11-01T14:00:00",
+      location:
+        "Captain's Place (Private Pool and Events Place), 24XP+J63, Malvar, Batangas, Philippines",
+      description:
+        "Join us for an amazing birthday celebration with games, cake, and fun!",
+    };
+
+    this.init();
+  }
+
+  init() {
+    this.setupIntersectionObserver();
+  }
+
+  setupIntersectionObserver() {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const container = entry.target;
+          container.classList.add("event-details-animated");
+
+          setTimeout(
+            () =>
+              container
+                .querySelector(".calendar-section")
+                ?.classList.add("visible"),
+            100
+          );
+          setTimeout(
+            () =>
+              container.querySelector(".map-section")?.classList.add("visible"),
+            300
+          );
+          setTimeout(() => this.initializeCalendar(), 500);
+        }
+      });
+    });
+
+    const eventDetailsSection = document.getElementById("event-details");
+    if (eventDetailsSection) observer.observe(eventDetailsSection);
+  }
+
+  initializeCalendar() {
+    const calendarEl = document.getElementById("calendar");
+    if (!calendarEl || typeof FullCalendar === "undefined") return;
+
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: "dayGridMonth",
+      initialDate: "2025-11-02",
+      height: "auto",
+      dayHeaderFormat: { weekday: "narrow" },
+      headerToolbar: { left: "title", center: "", right: "" },
       events: [
         {
-          start: '2025-01-02',
-          display: 'background',
-          backgroundColor: '#ff7bb0'
-        }
-      ]
+          title: this.eventDetails.title,
+          start: this.eventDetails.start,
+          end: this.eventDetails.end,
+          backgroundColor: "#FF2D95",
+          borderColor: "#FF2D95",
+          textColor: "#FFFFFF",
+        },
+      ],
+      eventClick: (info) => {
+        info.jsEvent.preventDefault();
+        alert(
+          `🎉 ${
+            info.event.title
+          }\n📅 ${info.event.start.toLocaleDateString()}\n⏰ ${info.event.start.toLocaleTimeString()} - ${info.event.end.toLocaleTimeString()}`
+        );
+      },
     });
+
     calendar.render();
-});
+    this.setupCalendarButton();
+  }
 
-//notification styles
-const notificationStyles = document.createElement('style');
-notificationStyles.textContent = `
-    @keyframes slideInRight {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
+  setupCalendarButton() {
+    const addToCalendarBtn = document.getElementById("addToCalendar");
+    if (addToCalendarBtn) {
+      addToCalendarBtn.addEventListener("click", () =>
+        this.addToGoogleCalendar()
+      );
     }
-    
-    @keyframes slideOutRight {
-        from {
-            transform: translateX(0);
-            opacity: 1;
-        }
-        to {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-    }
-    
-    .notification {
-        will-change: transform;
-        backface-visibility: hidden;
-    }
-`;
+  }
 
-// add styles if they don't exist
-if (!document.querySelector('#notification-styles')) {
-    notificationStyles.id = 'notification-styles';
-    document.head.appendChild(notificationStyles);
+  addToGoogleCalendar() {
+    const startDate = new Date(this.eventDetails.start)
+      .toISOString()
+      .replace(/[-:]/g, "")
+      .replace(/\.\d{3}/, "");
+    const endDate = new Date(this.eventDetails.end)
+      .toISOString()
+      .replace(/[-:]/g, "")
+      .replace(/\.\d{3}/, "");
+
+    const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
+      this.eventDetails.title
+    )}&dates=${startDate}/${endDate}&details=${encodeURIComponent(
+      this.eventDetails.description
+    )}&location=${encodeURIComponent(this.eventDetails.location)}`;
+
+    window.open(googleCalendarUrl, "_blank");
+  }
+}
+
+// =============================================================================
+// RSVP & DRESS CODE MODULE
+// =============================================================================
+
+class RSVPManager {
+  constructor() {
+    this.init();
+  }
+
+  init() {
+    this.setupFormLoading();
+    this.setupIntersectionObservers();
+  }
+
+  setupFormLoading() {
+    const rsvpForm = document.getElementById("rsvpForm");
+    const formLoading = document.getElementById("formLoading");
+
+    setTimeout(() => {
+      if (formLoading) formLoading.style.display = "none";
+      if (rsvpForm) rsvpForm.style.display = "block";
+    }, 2000);
+
+    if (rsvpForm) {
+      rsvpForm.addEventListener("load", () => {
+        if (formLoading) formLoading.style.display = "none";
+        rsvpForm.style.display = "block";
+      });
+    }
+  }
+
+  setupIntersectionObservers() {
+    const rsvpObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const rsvpCard = entry.target.querySelector(".rsvp-card");
+            if (rsvpCard) rsvpCard.classList.add("visible");
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    const dressCodeObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const header = entry.target.querySelector(".section-header");
+            const colorTheme = entry.target.querySelector(".color-theme");
+            const content = entry.target.querySelector(".dress-code-content");
+
+            if (header) header.classList.add("visible");
+            if (colorTheme)
+              setTimeout(() => colorTheme.classList.add("visible"), 200);
+            if (content)
+              setTimeout(() => content.classList.add("visible"), 400);
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    const dressCodeSection = document.getElementById("dress-code");
+    const rsvpSection = document.getElementById("rsvp-section");
+
+    if (dressCodeSection) dressCodeObserver.observe(dressCodeSection);
+    if (rsvpSection) rsvpObserver.observe(rsvpSection);
+  }
+}
+
+// =============================================================================
+// ENVELOPE INTERACTION MODULE
+// =============================================================================
+
+class EnvelopeManager {
+  constructor() {
+    this.envelope = document.getElementById("envelope");
+    this.lid = document.getElementById("lid");
+    this.lid1 = document.getElementById("lid1");
+    this.letter = document.getElementById("letter");
+    this.storybook = document.getElementById("story-section");
+    this.openSound = document.getElementById("openSound");
+
+    this.isEnvelopeOpened = false;
+    this.isAnimating = false;
+
+    this.init();
+  }
+
+  init() {
+    if (this.envelope) {
+      this.envelope.addEventListener("click", this.openEnvelope.bind(this), {
+        passive: true,
+      });
+    }
+  }
+
+  openEnvelope() {
+    if (this.isEnvelopeOpened || this.isAnimating) return;
+
+    this.isAnimating = true;
+    this.isEnvelopeOpened = true;
+
+    if (this.lid1) this.lid1.style.display = "none";
+
+    this.envelope.style.pointerEvents = "none";
+    this.playSound(this.openSound);
+    this.animateEnvelopeOpening();
+  }
+
+  animateEnvelopeOpening() {
+    if (this.lid) this.lid.classList.add("open");
+
+    setTimeout(() => {
+      if (this.letter) this.letter.classList.add("visible");
+    }, 500);
+
+    setTimeout(() => {
+      // Start music when envelope opens
+      if (window.musicManager) {
+        window.musicManager.startMusic();
+      }
+
+      // Additional envelope opening effects can be added here
+      this.isAnimating = false;
+    }, 1200);
+
+    setTimeout(() => {
+      // show storybook
+      this.storybook.classList.add("visible");
+      this.smoothScrollToStorybook();
+    }, 2000);
+  }
+
+  playSound(audioElement) {
+    if (audioElement) {
+      audioElement.play().catch(() => {
+        console.log("Audio play failed - user interaction required");
+      });
+    }
+  }
+
+  reset() {
+    this.isEnvelopeOpened = false;
+    this.isAnimating = false;
+
+    if (this.envelope) this.envelope.style.pointerEvents = "auto";
+    if (this.lid) this.lid.classList.remove("open");
+    if (this.letter) this.letter.classList.remove("visible");
+    if (this.lid1) this.lid1.style.display = "block";
+  }
+
+  smoothScrollToStorybook() {
+    this.storybook.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
+
+// =============================================================================
+// MUSIC CONTROLS MODULE
+// =============================================================================
+
+class MusicManager {
+  constructor() {
+    this.musicBtn = document.getElementById("musicBtn");
+    this.bgMusic = document.getElementById("bgMusic");
+    this.isMusicPlaying = false;
+
+    this.init();
+  }
+
+  init() {
+    if (this.musicBtn) {
+      this.musicBtn.addEventListener("click", this.toggleMusic.bind(this), {
+        passive: true,
+      });
+    }
+  }
+
+  toggleMusic() {
+    if (!this.bgMusic) return;
+
+    if (this.isMusicPlaying) {
+      this.pauseMusic();
+    } else {
+      this.startMusic();
+    }
+  }
+
+  startMusic() {
+    if (!this.bgMusic || !this.musicBtn) return;
+
+    this.bgMusic
+      .play()
+      .then(() => {
+        this.musicBtn.classList.add("playing");
+        this.isMusicPlaying = true;
+      })
+      .catch(() => {
+        console.log("Auto-play prevented. User interaction required.");
+      });
+  }
+
+  pauseMusic() {
+    if (!this.bgMusic || !this.musicBtn) return;
+
+    this.bgMusic.pause();
+    this.musicBtn.classList.remove("playing");
+    this.isMusicPlaying = false;
+  }
+
+  playSound(audioElement) {
+    if (audioElement) {
+      audioElement.play().catch(() => {
+        console.log("Audio play failed - user interaction required");
+      });
+    }
+  }
+
+  setVolume(volume) {
+    if (this.bgMusic) {
+      this.bgMusic.volume = Math.max(0, Math.min(1, volume));
+    }
+  }
+}
+
+// =============================================================================
+// UTILITY FUNCTIONS
+// =============================================================================
+
+function showLoading(message = "Loading...") {
+  const loadingEl = document.getElementById("loadingScreen");
+  const textEl = loadingEl?.querySelector("p");
+
+  if (loadingEl) {
+    if (textEl) textEl.textContent = message;
+    loadingEl.classList.remove("fade-out");
+    loadingEl.style.display = "flex";
+    loadingEl.style.opacity = "1";
+    loadingEl.style.visibility = "visible";
+  }
+}
+
+function hideLoading() {
+  if (window.loadingScreen) {
+    window.loadingScreen.forceHide();
+  }
+}
+
+// =============================================================================
+// APP INITIALIZATION
+// =============================================================================
+
+let loadingScreen;
+
+function initializeApp() {
+  loadingScreen = new LoadingScreen();
+  const envelopeManager = new EnvelopeManager();
+  const musicManager = new MusicManager();
+
+  new GuestListManager();
+  new StoryBook();
+  new EventDetailsManager();
+  new RSVPManager();
+
+  // Make managers globally accessible
+  window.loadingScreen = loadingScreen;
+  window.envelopeManager = envelopeManager;
+  window.musicManager = musicManager;
+}
+
+document.addEventListener("DOMContentLoaded", initializeApp);
+
+if (document.readyState !== "loading") {
+  initializeApp();
+}
+
+// Module exports for compatibility
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { LoadingScreen, showLoading, hideLoading };
 }
